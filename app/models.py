@@ -56,9 +56,9 @@ class Release(db.Model):
     def avg_review_score(self):
         reviews = db.session.scalars(self.reviews.select()).all()
         review_count = len(reviews)
-        review_scores = []
-        for review in reviews:
-            review_scores.append(review.score)
+        if review_count == 0:
+            return 0  # or None, depending on how you want to handle this case
+        review_scores = [review.score for review in reviews]
         avg_review = sum(review_scores) / review_count
         return avg_review
 
@@ -79,7 +79,7 @@ class Track(db.Model):
     lyrics: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
 
     release_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(Release.id), index=True)
-    
+
     release: so.Mapped[Release] = so.relationship(back_populates='tracks')
 
     def as_dict(self):

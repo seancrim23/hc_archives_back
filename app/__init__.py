@@ -2,6 +2,7 @@ from flask import Flask
 from config import Config
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
 
 #initializing dependencies
 db = SQLAlchemy()
@@ -10,6 +11,7 @@ migrate = Migrate()
 #integrate all dependencies with app and spin up flask app
 def create_app(config_class=Config):
     app = Flask(__name__)
+    CORS(app)
     app.config.from_object(config_class)
 
     db.init_app(app)
@@ -31,7 +33,7 @@ def create_app(config_class=Config):
 
     from app.track import bp as track_bp
     app.register_blueprint(track_bp)
-    
+
     return app
 
 from app import models
