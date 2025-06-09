@@ -2,6 +2,7 @@ from flask import Flask
 from config import Config
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
 from flask_login import LoginManager
 
 #initializing dependencies
@@ -13,6 +14,7 @@ login.login_view = 'auth.login'
 #integrate all dependencies with app and spin up flask app
 def create_app(config_class=Config):
     app = Flask(__name__)
+    CORS(app)
     app.config.from_object(config_class)
 
     db.init_app(app)
