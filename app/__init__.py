@@ -3,10 +3,13 @@ from config import Config
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
+from flask_login import LoginManager
 
 #initializing dependencies
 db = SQLAlchemy()
 migrate = Migrate()
+login = LoginManager()
+login.login_view = 'auth.login'
 
 #integrate all dependencies with app and spin up flask app
 def create_app(config_class=Config):
@@ -16,6 +19,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    login.init_app(app)
 
     #TODO implement and register auth bp
 
@@ -34,6 +38,9 @@ def create_app(config_class=Config):
     from app.track import bp as track_bp
     app.register_blueprint(track_bp)
 
+    from app.tokens import bp as tokens_bp
+    app.register_blueprint(tokens_bp)
+    
     return app
 
 from app import models

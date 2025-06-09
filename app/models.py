@@ -1,7 +1,11 @@
 from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from app import db
+from werkzeug.security import generate_password_hash, check_password_hash
+from app import db, login
+from flask_login import UserMixin
+from datetime import timedelta
+import secrets
 
 #TODO probably delete but keep here in case i need a many to many table
 #followers = sa.Table(
@@ -24,16 +28,49 @@ class Band(db.Model):
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     username: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, unique=True)
     email: so.Mapped[str] = so.mapped_column(sa.String(120), index=True, unique=True)
     password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
+    token: so.Mapped[Optional[str]] = so.mapped_column(sa.String(32), index=True, unique=True)
+    token_expiration: so.Mapped[Optional[datetime]]
 
     reviews: so.WriteOnlyMapped['Review'] = so.relationship(back_populates='author', passive_deletes=True)
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def get_token(self, expires_in=3600):
+        now = datetime.now(timezone.utc)
+        if self.token and self.token_expiration.replace(
+            tzinfo=timezone.utc) > now + timedelta(seconds=60):
+            return self.token
+        self.token = secrets.token_hex(16)
+        self.token_expiration = now + timedelta(seconds=expires_in)
+        db.session.add(self)
+        return self.token
+    
+    def revoke_token(self):
+        self.token_expiration = datetime.now(timezone.utc) - timedelta(seconds=1)
+
+    @staticmethod
+    def check_token(token):
+        user = db.session.scalar(sa.select(User).where(User.token == token))
+        if user is None or user.token_expiration.replace(
+            tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            return None
+        return user
+
+@login.user_loader
+def load_user(id):
+    return db.session.get(User, int(id))
 
 class Release(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
